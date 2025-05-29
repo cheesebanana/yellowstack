@@ -226,6 +226,41 @@ The template includes several modal windows for various operations:
         </div>
     </div>
 </div>
+
+<!-- Modal for editing script -->
+<div class="modal fade" id="editScriptModal" tabindex="-1" aria-labelledby="editScriptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editScriptModalLabel">Edit Script</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editScriptForm">
+                    <input type="hidden" id="editScriptIdForm">
+                    
+                    <div class="mb-3">
+                        <label for="editScriptName" class="form-label">Script Name</label>
+                        <input type="text" class="form-control" id="editScriptName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editScriptDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editScriptDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editScriptPath" class="form-label">Script Path</label>
+                        <input type="text" class="form-control" id="editScriptPath" required>
+                        <small class="form-text text-muted">Enter the full path to the Python script</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEditScriptBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block head %}
@@ -732,6 +767,13 @@ The template includes several modal windows for various operations:
                                             data-script-name="${script.name}" data-parameters='${script.parameters || "[]"}'>
                                         Parameters
                                     </button>` : ''}
+                                <button class="btn btn-sm btn-info edit-script me-1" 
+                                        data-script-id="${script.id}" 
+                                        data-script-name="${script.name}"
+                                        data-script-description="${script.description || ''}"
+                                        data-script-path="${script.path}">
+                                    <i class="ti ti-edit me-1"></i>Edit
+                                </button>
                                 <button class="btn btn-sm btn-danger delete-script" 
                                         data-script-id="${script.id}" 
                                         data-script-name="${script.name}">
@@ -778,6 +820,27 @@ The template includes several modal windows for various operations:
                         
                         // Show the modal
                         const modal = new bootstrap.Modal(document.getElementById('runScriptModal'));
+                        modal.show();
+                    });
+                });
+                
+                // Add event listeners for edit script buttons
+                document.querySelectorAll('.edit-script').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const scriptId = this.getAttribute('data-script-id');
+                        const scriptName = this.getAttribute('data-script-name');
+                        const scriptDescription = this.getAttribute('data-script-description');
+                        const scriptPath = this.getAttribute('data-script-path');
+                        
+                        // Set the script data in the edit modal
+                        document.getElementById('editScriptIdForm').value = scriptId;
+                        document.getElementById('editScriptName').value = scriptName;
+                        document.getElementById('editScriptDescription').value = scriptDescription;
+                        document.getElementById('editScriptPath').value = scriptPath;
+                        document.getElementById('editScriptModalLabel').textContent = `Edit Script: ${scriptName}`;
+                        
+                        // Show the modal
+                        const modal = new bootstrap.Modal(document.getElementById('editScriptModal'));
                         modal.show();
                     });
                 });
@@ -1001,6 +1064,52 @@ The template includes several modal windows for various operations:
     }
     
     /**
+     * Updates a script
+     */
+    function updateScript() {
+        const scriptId = document.getElementById('editScriptIdForm').value;
+        const name = document.getElementById('editScriptName').value;
+        const description = document.getElementById('editScriptDescription').value;
+        const path = document.getElementById('editScriptPath').value;
+        
+        if (!name || !path) {
+            alert('Name and path are required!');
+            return;
+        }
+        
+        fetch(`/api/scripts/${scriptId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: name,
+                description: description,
+                path: path
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editScriptModal'));
+                modal.hide();
+                
+                // Reload the scripts list
+                loadScripts();
+                
+                alert('Script updated successfully!');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating script:', error);
+            alert('An error occurred while updating the script.');
+        });
+    }
+
+    /**
      * Updates script parameters
      */
     function updateScriptParameters() {
@@ -1133,6 +1242,9 @@ The template includes several modal windows for various operations:
             
             // Add event listener for save button in edit parameters modal
             document.getElementById('saveParametersBtn').addEventListener('click', updateScriptParameters);
+            
+            // Add event listener for save button in edit script modal
+            document.getElementById('saveEditScriptBtn').addEventListener('click', updateScript);
             
             // Add event listener for run button in run modal
             document.getElementById('startScriptBtn').addEventListener('click', runScript);
