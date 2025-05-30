@@ -60,3 +60,5 @@ zip_project.sh
 
 .coverage
 .coveragerc
+
+yellowstack.db
